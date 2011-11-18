@@ -13,6 +13,9 @@
 
 # Configuration
 
+# specify file extensions you want to parse
+FILE_EXTENSIONS='pm pl t'
+
 # This filter process any Perl (.pm) file added to the commit and
 # process them with perltidy, using the local .perltidyrc file.
 USE_PERLTIDY_FILTER=${USE_PERLTIDY_FILTER:-1}
@@ -46,31 +49,35 @@ die() {
 
 # perltidy 
 if [[ "$USE_PERLTIDY_FILTER" == "1" ]]; then
-	for file in `git status|grep .pm|awk '{print $NF}'`
-	do
-		if [[ ! `echo $file | grep '^t'` ]]; then
-			echo "perltidy $file"
-			perltidy -pro=.perltidyrc $file
-			if [[ $? != 0 ]]; then
-				die "Perltidy error in file: $file"
-			fi
-		fi
-	done
-	find lib -type f -name '*.bak' -exec rm -f {} \;
-	find t -type f -name '*.bak' -exec rm -f {} \;
+    for ext in $FILE_EXTENSIONS; do
+        for file in `git status|grep ".${ext}\$" |awk '{print $NF}'`
+        do
+            if [[ ! `echo $file | grep '^t'` ]]; then
+                echo "perltidy $file"
+                perltidy -pro=.perltidyrc $file
+                if [[ $? != 0 ]]; then
+                    die "Perltidy error in file: $file"
+                fi
+            fi
+        done
+    done
+    find . -type f -name '*.bak' -exec rm -f {} \;
+    find . -type f -name '*.tdy' -exec rm -f {} \;
 fi
 
 # Perl::Critic
 if [[ "$USE_PERLCRITIC_FILTER" == "1" ]]; then
-	for file in `git status|grep .pm|awk '{print $NF}'`
-	do
-		if [[ ! `echo $file | grep '^t'` ]]; then
-			perlcritic --profile .perlcriticrc $file
-			if [[ $? != 0 ]]; then
-				die "Perl::Critic violation detected in $file"
-			fi
-		fi
-	done
+    for ext in $FILE_EXTENSIONS; do
+        for file in `git status|grep ".${ext}\$"|awk '{print $NF}'`
+        do
+            if [[ ! `echo $file | grep '^t'` ]]; then
+                perlcritic --profile .perlcriticrc $file
+                if [[ $? != 0 ]]; then
+                    die "Perl::Critic violation detected in $file"
+                fi
+            fi
+        done
+    done
 fi
 
 # if everything passed and a Perl file is touched, 
